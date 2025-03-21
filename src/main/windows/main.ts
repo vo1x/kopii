@@ -32,6 +32,7 @@ let isMonitoring = false
 let monitorInterval: NodeJS.Timeout | null = null
 let lastClipboardText = ''
 
+
 export async function MainWindow() {
   const window = createWindow({
     id: 'main',
@@ -43,7 +44,7 @@ export async function MainWindow() {
     movable: true,
     resizable: false,
     maximizable: false,
-    alwaysOnTop: true,
+    alwaysOnTop: false,
     autoHideMenuBar: true,
     frame: false,
 
@@ -113,6 +114,23 @@ export async function MainWindow() {
 
   ipcMain.handle('settings:getShortcut', () => {
     return store.get('settings.shortcut', DEFAULT_SHORTCUT)
+  })
+
+  ipcMain.handle('settings:enableShortcut', () => {
+    try {
+      globalShortcut.register(currentShortcut, () => {
+        if (window.isVisible()) {
+          window.hide()
+        } else {
+          window.show()
+          window.focus()
+        }
+      })
+      return true
+    } catch (error) {
+      console.error('Error enabling shortcut:', error)
+      return false
+    }
   })
 
   ipcMain.handle('settings:disableShortcut', () => {

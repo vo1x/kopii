@@ -1,13 +1,15 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Save } from 'lucide-react'
+import { Save, ArrowLeft, X } from 'lucide-react'
 
 const { App } = window
 
 export function Settings() {
   const navigate = useNavigate()
   const [shortcut, setShortcut] = useState('')
-  const [isSaving, setIsSaving] = useState(false)
+  const [pendingShortcut, setPendingShortcut] = useState('')
+  const [isRecording, setIsRecording] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     App.settings.disableShortcut()
@@ -15,22 +17,24 @@ export function Settings() {
     const loadShortcut = async () => {
       const shortcut = await App.settings.getShortcut()
       setShortcut(shortcut)
+      setPendingShortcut(shortcut)
     }
 
     loadShortcut()
+
+    return () => {
+      App.settings.enableShortcut()
+    }
   }, [])
 
   const handleShortcutSave = async () => {
-    setIsSaving(true)
-
     try {
-      if (!shortcut.trim()) throw new Error('Invalid shortcut')
-      await App.settings.updateShortcut(shortcut)
-      // navigate('/')
+      if (!pendingShortcut.trim()) throw new Error('Invalid shortcut')
+      await App.settings.updateShortcut(pendingShortcut)
+      setShortcut(pendingShortcut)
+      setIsRecording(false)
     } catch (error) {
       console.error(error)
-    } finally {
-      setIsSaving(false)
     }
   }
 
@@ -49,9 +53,15 @@ export function Settings() {
       key !== 'CONTROL' &&
       key !== 'SHIFT' &&
       key !== 'ALT' &&
-      key !== 'META'
+      key !== 'META' &&
+      key !== 'ESCAPE'
     ) {
       newShortcut += key
+    } else if (key === 'ESCAPE') {
+      setPendingShortcut(shortcut)
+      setIsRecording(false)
+      inputRef.current?.blur()
+      return
     }
 
     const nonModifierKey = newShortcut
@@ -69,29 +79,75 @@ export function Settings() {
       return
     }
 
-    setShortcut(newShortcut)
+    setPendingShortcut(newShortcut)
+  }
+
+  const startRecording = () => {
+    setIsRecording(true)
+    if (inputRef.current) {
+      inputRef.current.focus()
+    }
+  }
+
+  const cancelRecording = () => {
+    setPendingShortcut(shortcut)
+    setIsRecording(false)
   }
 
   return (
-    <div className="flex flex-col p-4 items-center">
-      <span className="self-start font-semibold text-2xl mb-4">Settings</span>
-
-      <div className="flex items-center border">
-        <div className="self-start flex flex-col gap-2">
-          <label htmlFor="shortcut">Show/Hide Shortcut</label>
-          <input
-            type="text"
-            value={shortcut}
-            onKeyDown={handleKeyDown}
-            readOnly
-            className="border w-80 rounded-md bg-gray-900 border-gray-700 p-2 focus:border-teal-500 outline-none"
-          />
-        </div>
-        <button onClick={handleShortcutSave}>
-          <Save />
-        </button>
+    <div className="flex flex-col p-4">
+      <div className='flex items-center gap-4 mb-4'>
+        <button
+          className='cursor-pointer text-gray-400 hover:text-teal-500'
+          onClick={() => navigate('/')}><ArrowLeft /></button>
+        
+        <span className="self-start font-semibold text-2xl">Settings</span>
       </div>
-      <button onClick={() => navigate('/')}>back</button>
+
+      <div className="flex flex-col gap-2">
+        <label htmlFor="shortcut" className="font-medium text-gray-300">Show/Hide Shortcut</label>
+        <div className="flex items-center justify-between">
+          {!isRecording ? (
+            <div
+              onClick={startRecording}
+              className="border w-80 rounded-md bg-gray-900 border-gray-700 p-2 cursor-pointer hover:border-teal-500 flex items-center justify-between"
+            >
+              <span>{shortcut || 'Click to record shortcut'}</span>
+              <span className="text-xs text-gray-400">{shortcut ? 'Click to change' : ''}</span>
+            </div>
+          ) : (
+            <div className="flex items-center w-80 border rounded-md bg-gray-900 border-teal-500 p-2">
+              <input
+                ref={inputRef}
+                type="text"
+                value={pendingShortcut}
+                onKeyDown={handleKeyDown}
+                readOnly
+                placeholder="Press keys..."
+                className="bg-transparent outline-none flex-grow"
+                autoFocus
+              />
+              <button onClick={cancelRecording} className="text-gray-400 hover:text-red-500 ml-2">
+                <X size={18} />
+              </button>
+            </div>
+          )}
+          
+          {isRecording && pendingShortcut !== shortcut && (
+            <button 
+              onClick={handleShortcutSave}
+              className="ml-2 p-1 rounded-md hover:bg-gray-800"
+            >
+              <Save size={24} className='text-teal-500'/>
+            </button>
+          )}
+        </div>
+        {isRecording && (
+          <p className="text-xs text-gray-400 mt-1">
+            Press desired key combination. Press Escape to cancel.
+          </p>
+        )}
+      </div>
     </div>
   )
 }

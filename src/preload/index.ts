@@ -23,6 +23,7 @@ const API = {
     updateShortcut: (shortcut: string) =>
       ipcRenderer.invoke('settings:updateShortcut', shortcut),
     disableShortcut: () => ipcRenderer.invoke('settings:disableShortcut'),
+    enableShortcut: () => ipcRenderer.invoke('settings:enableShortcut'),
   },
   clipboard: {
     readText: () => ipcRenderer.invoke('clipboard:readText'),

@@ -12,6 +12,8 @@ export function TitleBar() {
     App.window.close()
   }
 
+  
+
   return (
     <div className="draggable h-9 bg-gray-900 flex items-center justify-between px-3 z-50">
       <div className="flex items-center">
