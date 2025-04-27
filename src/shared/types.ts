@@ -16,3 +16,11 @@ export interface WindowCreationByIPC {
   window(): BrowserWindowOrNull
   callback(window: BrowserWindow, event: IpcMainInvokeEvent): void
 }
+
+export interface ClipboardHistoryItem {
+  id: string
+  type: 'text' | 'image'
+  text?: string
+  imagePath?: string
+  timestamp: number
+}

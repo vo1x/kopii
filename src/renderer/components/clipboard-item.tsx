@@ -1,14 +1,22 @@
 import { useState, useEffect } from 'react'
 import { ClipboardCopy, Image, Trash, ClipboardCheck } from 'lucide-react'
+import type { ClipboardHistoryItem } from 'shared/types'
 
-const { App } = window
+const { api } = window
 
-export const ClipboardItem: React.FC<{
-  item: any
-  deleteItem: any
+interface ClipboardItemProps {
+  item: ClipboardHistoryItem
+  deleteItem: (id: string) => void
   handleItemCopy: (id: string | null) => void
   copiedItemId: string | null
-}> = ({ item, deleteItem, handleItemCopy, copiedItemId }) => {
+}
+
+export const ClipboardItem = ({
+  item,
+  deleteItem,
+  handleItemCopy,
+  copiedItemId,
+}: ClipboardItemProps) => {
   const formatTime = (timestamp: number) => {
     return new Date(timestamp).toLocaleTimeString()
   }
@@ -19,7 +27,7 @@ export const ClipboardItem: React.FC<{
     const loadImageData = async () => {
       if (item.type === 'image' && item.imagePath) {
         try {
-          const data = await App.clipboard.getImageData(item.imagePath)
+          const data = await api.clipboard.getImageData(item.imagePath)
           setImageData(data)
         } catch (error) {
           console.error('Failed to load image data:', error)
@@ -32,7 +40,7 @@ export const ClipboardItem: React.FC<{
 
   const handleDoubleClick = async () => {
     try {
-      await App.clipboard.copyToClipboardAndNotify(item)
+      await api.clipboard.copyToClipboardAndNotify(item)
     } catch (error) {
       console.error('Failed to copy item:', error)
     }
@@ -41,36 +49,16 @@ export const ClipboardItem: React.FC<{
   const copyToClipboard = async () => {
     try {
       if (item.type === 'text' && item.text) {
-        await App.clipboard.writeText(item.text)
+        await api.clipboard.writeText(item.text)
         handleItemCopy(item.id)
       } else if (item.type === 'image' && imageData) {
-        const img = document.createElement('img')
-
-        img.onload = () => {
-          const canvas = document.createElement('canvas')
-          canvas.width = img.width
-          canvas.height = img.height
-          const ctx = canvas.getContext('2d')
-          if (ctx) {
-            ctx.drawImage(img, 0, 0)
-          } else {
-            console.error('Failed to get 2D context')
-          }
-
-          canvas.toBlob(blob => {
-            if (blob && navigator.clipboard && navigator.clipboard.write) {
-              navigator.clipboard
-                .write([new window.ClipboardItem({ 'image/png': blob })])
-                .then(() => {
-                  handleItemCopy(item.id)
-                })
-            } else {
-              console.error('Clipboard API not supported')
-            }
-          }, 'image/png')
+        try {
+          await api.clipboard.getImageData(item.imagePath)
+          await api.clipboard.copyToClipboardAndNotify(item)
+          handleItemCopy(item.id)
+        } catch (error) {
+          console.error('Failed to copy image:', error)
         }
-
-        img.src = imageData
       }
     } catch (error) {
       console.error('Failed to copy to clipboard:', error)
@@ -78,7 +66,7 @@ export const ClipboardItem: React.FC<{
     }
   }
 
-  const isUrl = (text: string) => {
+  const isUrl = (text: string): boolean => {
     const urlRegex = /^(https?:\/\/[^\s]+)$/
     return urlRegex.test(text.trim())
   }
@@ -87,16 +75,12 @@ export const ClipboardItem: React.FC<{
     e.preventDefault()
     e.stopPropagation()
 
-    console.log('Opening URL in system browser:', url) // Add logging
-
-    if (App?.shell?.openExternal) {
+    if (api?.shell?.openExternal) {
       try {
-        App.shell.openExternal(url)
+        api.shell.openExternal(url)
       } catch (error) {
         console.error('Failed to open URL externally:', error)
       }
-    } else {
-      console.warn('App.shell.openExternal is not available, using fallback')
     }
   }
 
@@ -137,7 +121,7 @@ export const ClipboardItem: React.FC<{
         </div>
       </div>
 
-      {item.type === 'text' && (
+      {item.type === 'text' && item.text && (
         <pre className="break-words whitespace-pre-wrap text-sm overflow-auto max-h-48">
           {isUrl(item.text) ? (
             <a

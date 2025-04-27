@@ -1,17 +1,17 @@
 import { create } from 'zustand'
+import type { ClipboardHistoryItem } from 'shared/types'
 
-const { App } = window
+const { api } = window
 
 interface HistoryStoreState {
-  history: any[]
+  history: ClipboardHistoryItem[]
   currentCopiedId: string | null
   isLoading: boolean
-  loadHistory: () => Promise<void>
+  setHistory: (items: ClipboardHistoryItem[]) => void
+  addItem: (item: ClipboardHistoryItem) => void
   deleteItem: (id: string) => Promise<void>
   clearHistory: () => Promise<void>
   setCopiedItem: (id: string | null) => void
-  startMonitoring: () => void
-  stopMonitoring: () => void
 }
 
 const useHistoryStore = create<HistoryStoreState>((set, get) => ({
@@ -19,20 +19,26 @@ const useHistoryStore = create<HistoryStoreState>((set, get) => ({
   currentCopiedId: null,
   isLoading: false,
 
-  loadHistory: async () => {
-    set({ isLoading: true })
-    try {
-      const items = await App.clipboard.getHistory()
-      set({ history: items, isLoading: false })
-    } catch (error) {
-      console.error('Failed to load clipboard history:', error)
-      set({ isLoading: false })
-    }
+  setHistory: (items: ClipboardHistoryItem[]) => {
+    set({ history: items })
+  },
+
+  addItem: (item: ClipboardHistoryItem) => {
+    set(state => {
+      const existingIndex = state.history.findIndex(i => i.id === item.id)
+
+      if (existingIndex >= 0) {
+        const updatedHistory = [...state.history]
+        updatedHistory.splice(existingIndex, 1)
+        return { history: [item, ...updatedHistory] }
+      }
+      return { history: [item, ...state.history] }
+    })
   },
 
   clearHistory: async () => {
     try {
-      await App.clipboard.clearHistory()
+      await api.clipboard.clearHistory()
       set({ history: [] })
     } catch (error) {
       console.error('Failed to clear clipboard history:', error)
@@ -41,12 +47,13 @@ const useHistoryStore = create<HistoryStoreState>((set, get) => ({
 
   deleteItem: async (id: string) => {
     try {
-      await App.clipboard.deleteHistoryItem(id)
+      await api.clipboard.deleteHistoryItem(id)
       set(state => ({ history: state.history.filter(item => item.id !== id) }))
     } catch (error) {
       console.error('Failed to delete item:', error)
     }
   },
+
   setCopiedItem: (id: string | null) => {
     set({ currentCopiedId: id })
 
@@ -55,19 +62,6 @@ const useHistoryStore = create<HistoryStoreState>((set, get) => ({
         set({ currentCopiedId: null })
       }, 1000)
     }
-  },
-
-  startMonitoring: () => {
-    App.clipboard.startMonitoring()
-
-    const unsubscribe = App.clipboard.onClipboardChanged(() => {
-      console.log('Clipboard changed, reloading history')
-      get().loadHistory()
-    })
-  },
-
-  stopMonitoring: () => {
-    App.clipboard.stopMonitoring()
   },
 }))
 

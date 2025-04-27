@@ -1,18 +1,16 @@
 import { Minus, X } from 'lucide-react'
 
-const { App } = window
+const { api } = window
 
 export function TitleBar() {
   const handleMinimize = () => {
     console.log('clicked')
-    App.window.minimize()
+    api.window.minimize()
   }
 
   const handleClose = () => {
-    App.window.close()
+    api.window.close()
   }
-
-  
 
   return (
     <div className="draggable h-9 bg-gray-900 flex items-center justify-between px-3 z-50">

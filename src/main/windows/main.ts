@@ -32,7 +32,6 @@ let isMonitoring = false
 let monitorInterval: NodeJS.Timeout | null = null
 let lastClipboardText = ''
 
-
 export async function MainWindow() {
   const window = createWindow({
     id: 'main',
@@ -60,12 +59,6 @@ export async function MainWindow() {
 
     window.show()
   })
-
-  // window.on('close', () => {
-  //   for (const window of BrowserWindow.getAllWindows()) {
-  //     window.destroy()
-  //   }
-  // })
 
   let currentShortcut = store.get('settings.shortcut', DEFAULT_SHORTCUT)
 
@@ -165,8 +158,6 @@ export async function MainWindow() {
     globalShortcut.unregisterAll()
   })
 
-  // Clipboard monitoring
-
   const clipboardHistory = new ClipboardHistoryManager()
 
   ipcMain.handle('clipboard:readText', async (): Promise<string> => {
@@ -185,7 +176,6 @@ export async function MainWindow() {
     'clipboard:getHistory',
     async (): Promise<ClipboardHistoryItem[]> => {
       const history = clipboardHistory.getHistory()
-      console.log('Getting clipboard history, count:', history.length)
       return history
     }
   )
@@ -240,51 +230,66 @@ export async function MainWindow() {
     console.log('Started monitoring clipboard')
 
     isMonitoring = true
-    lastClipboardText = clipboard.readText()
-    console.log('Initial clipboard text:', lastClipboardText)
 
+    lastClipboardText = clipboard.readText()
     let lastImageHash = ''
 
+    const initialItem = clipboardHistory.checkClipboard()
+    if (initialItem && window) {
+      window.webContents.send('clipboard:changed', initialItem)
+    }
+
     monitorInterval = setInterval(() => {
-      const currentText = clipboard.readText()
-      const currentImage = clipboard.readImage()
-
-      const textChanged = currentText !== lastClipboardText
-      const imageChanged =
-        !currentImage.isEmpty() && currentImage.toDataURL() !== lastImageHash
-
-      if (textChanged) {
-        console.log('Text changed in clipboard:', currentText)
+      if (window?.isDestroyed()) {
+        clearInterval(monitorInterval)
+        monitorInterval = null
+        isMonitoring = false
+        return
       }
 
-      if (imageChanged) {
-        console.log('Image changed in clipboard')
-      }
+      try {
+        const currentText = clipboard.readText()
+        if (currentText !== lastClipboardText && currentText.trim()) {
+          console.log('Detected text change in clipboard')
+          lastClipboardText = currentText
+          const newItem = clipboardHistory.addItem(currentText)
 
-      if (textChanged || imageChanged) {
-        console.log('Clipboard content changed, checking clipboard')
-        lastClipboardText = currentText
+          if (window && newItem) {
+            window.webContents.send('clipboard:changed', newItem)
+          }
+          return
+        }
 
+        const currentImage = clipboard.readImage()
         if (!currentImage.isEmpty()) {
-          lastImageHash = currentImage.toDataURL()
-        }
+          try {
+            const imageSize = currentImage.getSize()
+            const aspectRatio = imageSize.width / imageSize.height
 
-        const newItem = clipboardHistory.checkClipboard()
-        console.log('New clipboard item:', newItem)
+            const pngData = currentImage.toPNG()
+            const dataFingerprint = pngData
+              .slice(0, Math.min(1000, pngData.length))
+              .reduce((sum, byte, index) => sum + byte * ((index % 7) + 1), 0)
 
-        if (window && newItem) {
-          console.log('Sending clipboard:changed event to renderer')
-          window.webContents.send('clipboard:changed', newItem)
-        } else {
-          console.log(
-            'Not sending event: window exists?',
-            !!window,
-            'newItem exists?',
-            !!newItem
-          )
+            const imageHash = `${imageSize.width}x${imageSize.height}:${aspectRatio.toFixed(2)}:${dataFingerprint}`
+
+            if (imageHash !== lastImageHash) {
+              console.log('Detected image change in clipboard')
+              lastImageHash = imageHash
+              const newItem = clipboardHistory.addImage(currentImage)
+
+              if (window && newItem) {
+                window.webContents.send('clipboard:changed', newItem)
+              }
+            }
+          } catch (error) {
+            console.error('Error processing clipboard image:', error)
+          }
         }
+      } catch (error) {
+        console.error('Error monitoring clipboard:', error)
       }
-    }, 100)
+    }, 500)
   })
 
   ipcMain.handle('clipboard:stopMonitoring', async (): Promise<void> => {
@@ -299,23 +304,17 @@ export async function MainWindow() {
 
   ipcMain.handle(
     'clipboard:getImageData',
-    async (_event: IpcMainInvokeEvent, imagePath: string): Promise<string> => {
+    async (
+      _event: IpcMainInvokeEvent,
+      imagePath: string
+    ): Promise<string | null> => {
       try {
-        // Log to confirm the path is correct
-        console.log('Loading image from path:', imagePath)
-
-        if (!fs.existsSync(imagePath)) {
-          console.error('Image file does not exist:', imagePath)
-          return ''
-        }
-
-        // Convert to data URL
-        const imageBuffer = fs.readFileSync(imagePath)
-        const base64Data = imageBuffer.toString('base64')
-        return `data:image/png;base64,${base64Data}`
+        const imageData = fs.readFileSync(imagePath)
+        const image = nativeImage.createFromBuffer(imageData)
+        return image.toDataURL()
       } catch (error) {
-        console.error('Error loading image data:', error)
-        return ''
+        console.error('Failed to get image data:', error)
+        return null
       }
     }
   )

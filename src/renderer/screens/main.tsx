@@ -1,63 +1,83 @@
-import { useMemo, useEffect, useState } from 'react'
-import { TitleBar } from 'renderer/components/TitleBar'
-import { useNavigate } from 'react-router-dom'
-import { ClipboardItem } from 'renderer/components/clipboard-item'
-import useHistoryStore from 'renderer/stores/historyStore'
-// The "App" comes from the context bridge in preload/index.ts
+import { useState, useEffect } from 'react'
 import Fuse from 'fuse.js'
+import useHistoryStore from 'renderer/stores/historyStore'
+import { ClipboardItem } from 'renderer/components/clipboard-item'
+import type { ClipboardHistoryItem } from 'shared/types'
 
-const { App } = window
+const { api } = window
 
 export function MainScreen() {
-  // const [history, setHistory] = useState([])
-  const { history, loadHistory, startMonitoring, stopMonitoring, deleteItem } =
-    useHistoryStore()
-
-  const [searchTerm, setSearchTerm] = useState('')
-
+  const { history, setHistory, deleteItem, addItem } = useHistoryStore()
+  const [searchTerm, setSearchTerm] = useState<string>('')
+  const [filteredHistory, setFilteredHistory] = useState<
+    ClipboardHistoryItem[]
+  >([])
   const [copiedItemId, setCopiedItemId] = useState<string | null>(null)
+  const [fuse, setFuse] = useState<Fuse<ClipboardHistoryItem> | null>(null)
+
+  useEffect(() => {
+    api.clipboard.startMonitoring()
+
+    const fetchHistory = async () => {
+      const historyItems = await api.clipboard.getHistory()
+      setHistory(historyItems)
+    }
+
+    fetchHistory()
+
+    const unsubscribe = api.clipboard.onClipboardChanged(newItem => {
+      console.log('Received new clipboard item:', newItem)
+      if (newItem) {
+        addItem(newItem)
+      }
+    })
+
+    return () => {
+      api.clipboard.stopMonitoring()
+      if (unsubscribe) unsubscribe()
+    }
+  }, [setHistory, addItem])
+
+  useEffect(() => {
+    if (history.length > 0) {
+      const fuseInstance = new Fuse(history, {
+        keys: ['text'],
+        threshold: 0.3,
+      })
+      setFuse(fuseInstance)
+    }
+  }, [history])
 
   const handleItemCopy = (id: string | null) => {
-    if (!id) setCopiedItemId(null)
     setCopiedItemId(id)
-    setTimeout(() => setCopiedItemId(null), 1000)
+    setTimeout(() => {
+      setCopiedItemId(null)
+    }, 1000)
   }
 
   useEffect(() => {
-    loadHistory()
-    startMonitoring()
-
-    return () => stopMonitoring()
-  }, [])
-
-  const fuse = useMemo(() => {
-    return new Fuse(history, {
-      keys: ['text'],
-      threshold: 0.4,
-      ignoreLocation: true,
-    })
-  }, [history])
-
-  const filteredHistory = useMemo(() => {
-    if (!searchTerm.trim()) {
-      return history
+    if (searchTerm === '') {
+      setFilteredHistory(history)
+      return
     }
 
-    const results = fuse.search(searchTerm)
-    return results.map(result => result.item)
+    if (fuse) {
+      const results = fuse.search(searchTerm)
+      setFilteredHistory(results.map(result => result.item))
+    }
   }, [searchTerm, fuse, history])
 
   return (
     <div className="flex-col flex h-full gap-2 p-4 ">
       <input
-        disabled={history?.length===0}
+        disabled={history?.length === 0}
         value={searchTerm}
         onChange={e => setSearchTerm(e.target.value)}
         placeholder="Search clipboard history..."
         type="text"
         className="border-gray-700 disabled:opacity-50 disabled:cursor-not-allowed focus:border-teal-600 border placeholder:text-gray-500 bg-gray-900 outline-none w-full rounded-md p-2 mb-2 text-gray-200"
       />
-      {filteredHistory.map((item: any) => (
+      {filteredHistory.map(item => (
         <ClipboardItem
           key={item.id}
           item={item}

@@ -7,13 +7,11 @@ import {
 
 declare global {
   interface Window {
-    App: typeof API
+    api: typeof API
   }
 }
 
 const API = {
-  sayHelloFromBridge: () => console.log('\nHello from bridgeAPI! 👋\n\n'),
-  username: process.env.USER,
   window: {
     minimize: () => ipcRenderer.send('window:minimize'),
     close: () => ipcRenderer.send('window:close'),
@@ -37,9 +35,11 @@ const API = {
     stopMonitoring: () => ipcRenderer.invoke('clipboard:stopMonitoring'),
     getImageData: (imagePath: string) =>
       ipcRenderer.invoke('clipboard:getImageData', imagePath),
-    onClipboardChanged: (callback: (newItem: string) => void) => {
-      const subscription: (_event: IpcRendererEvent, newItem: string) => void =
-        (_event, newItem) => callback(newItem)
+    onClipboardChanged: (callback: (newItem: any) => void) => {
+      const subscription: (_event: IpcRendererEvent, newItem: any) => void = (
+        _event,
+        newItem
+      ) => callback(newItem)
       ipcRenderer.on('clipboard:changed', subscription)
       return () => {
         ipcRenderer.removeListener('clipboard:changed', subscription)
@@ -57,4 +57,4 @@ const API = {
   },
 }
 
-contextBridge.exposeInMainWorld('App', API)
+contextBridge.exposeInMainWorld('api', API)

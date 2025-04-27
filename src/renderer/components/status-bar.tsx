@@ -3,19 +3,29 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import useHistoryStore from 'renderer/stores/historyStore'
 
-const { App } = window
+const { api } = window
+
+interface DialogOptions {
+  title?: string
+  message?: string
+  detail?: string
+  type?: 'info' | 'error' | 'question' | 'warning' | 'none'
+  buttons?: string[]
+  cancelId?: number
+  defaultId?: number
+}
 
 export const StatusBar = () => {
   const { clearHistory, history } = useHistoryStore()
   const navigate = useNavigate()
-  const [isClearing, setIsClearing] = useState(false)
+  const [isClearing, setIsClearing] = useState<boolean>(false)
 
   const handleEraseHistory = async () => {
     if (history.length === 0) return
 
     setIsClearing(true)
     try {
-      const result = await App.dialog.showConfirmation({
+      const options: DialogOptions = {
         title: 'Clear Clipboard History',
         message: 'Are you sure you want to clear all clipboard history?',
         detail: 'This action cannot be undone.',
@@ -23,7 +33,9 @@ export const StatusBar = () => {
         cancelId: 0,
         defaultId: 1,
         type: 'warning',
-      })
+      }
+
+      const result = await api.dialog.showConfirmation(options)
 
       if (result.response === 1) {
         await clearHistory()
@@ -36,22 +48,25 @@ export const StatusBar = () => {
   }
 
   return (
-    <div className="flex w-full items-center mx-auto mb-4 justify-center gap-4">
-      <button
-        onClick={() => navigate('/settings')}
-        className="bg-gray-900 p-2 rounded-md text-gray-400 hover:text-teal-400 cursor-pointer"
-      >
-        <Settings />
-      </button>
-      <button
-        onClick={handleEraseHistory}
-        disabled={history.length === 0 || isClearing}
-        className="bg-gray-900 p-2 
-        disabled:opacity-50
-        rounded-md text-gray-400 hover:text-red-500 disabled:cursor-not-allowed cursor-pointer disabled:hover:text-gray-400"
-      >
-        <Trash2 />
-      </button>
+    <div className="flex items-center justify-between bg-gray-800 border-t border-gray-700 p-3">
+      <div className="text-xs text-gray-400">
+        {history.length} {history.length === 1 ? 'item' : 'items'}
+      </div>
+      <div className="flex space-x-4">
+        <button
+          className="text-gray-400 hover:text-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
+          onClick={handleEraseHistory}
+          disabled={isClearing || history.length === 0}
+        >
+          <Trash2 size={18} />
+        </button>
+        <button
+          className="text-gray-400 hover:text-teal-500"
+          onClick={() => navigate('/settings')}
+        >
+          <Settings size={18} />
+        </button>
+      </div>
     </div>
   )
 }
