@@ -46,6 +46,17 @@ export default {
   win: {
     artifactName,
     icon: `${resources}/build/icons/icon.ico`,
-    target: ['zip', 'portable'],
+    target: ['nsis', 'zip', 'portable'],
+  },
+
+  nsis: {
+    oneClick: false,
+    allowToChangeInstallationDirectory: true,
+    createDesktopShortcut: true,
+    createStartMenuShortcut: true,
+    shortcutName: displayName,
+    installerIcon: `${resources}/build/icons/icon.ico`,
+    uninstallerIcon: `${resources}/build/icons/icon.ico`,
+    installerHeaderIcon: `${resources}/build/icons/icon.ico`,
   },
 } satisfies Configuration

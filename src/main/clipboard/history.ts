@@ -232,6 +232,8 @@ class ClipboardHistoryManager {
     this.history = this.history.filter(item => item.id !== id)
     this.saveHistory()
   }
+
+ 
 }
 
 export default ClipboardHistoryManager

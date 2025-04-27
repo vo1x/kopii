@@ -1,13 +1,24 @@
 import ReactDom from 'react-dom/client'
 import React from 'react'
-import { HashRouter as Router } from 'react-router-dom'
-import { AppRoutes } from './routes'
+import { MainScreen } from './screens/main'
+import { Settings } from './screens/settings'
+import { Layout } from './components/Layout'
+import useNavigationStore from './stores/navigationStore'
 import './globals.css'
+
+function App() {
+  const { currentScreen } = useNavigationStore()
+
+  return (
+    <Layout>
+      {currentScreen === 'main' && <MainScreen />}
+      {currentScreen === 'settings' && <Settings />}
+    </Layout>
+  )
+}
 
 ReactDom.createRoot(document.querySelector('app') as HTMLElement).render(
   <React.StrictMode>
-    <Router>
-      <AppRoutes />
-    </Router>
+    <App />
   </React.StrictMode>
 )

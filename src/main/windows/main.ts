@@ -72,10 +72,16 @@ export async function MainWindow() {
     try {
       globalShortcut.register(shortcut, () => {
         if (window.isVisible()) {
+          console.log('Hiding Kopii window')
           window.hide()
         } else {
-          window.show()
-          window.focus()
+          console.log('Preparing to show Kopii window')
+
+          setTimeout(() => {
+            console.log('Showing Kopii window')
+            window.show()
+            window.focus()
+          }, 50)
         }
       })
       currentShortcut = shortcut
@@ -215,7 +221,7 @@ export async function MainWindow() {
         new Notification({
           title: 'Copied to clipboard',
           body: `Paste using (${process.platform === 'darwin' ? 'CMD + V' : 'CTRL + V'})`,
-          silent: false,
+          silent: true, // This disables the notification sound
         }).show()
       }
     }
@@ -316,6 +322,16 @@ export async function MainWindow() {
         console.error('Failed to get image data:', error)
         return null
       }
+    }
+  )
+
+  ipcMain.handle(
+    'clipboard:pasteItemAtCursor',
+    async (
+      _event: IpcMainInvokeEvent,
+      item: ClipboardHistoryItem
+    ): Promise<boolean> => {
+      return clipboardHistory.pasteItemAtCursor(item)
     }
   )
 

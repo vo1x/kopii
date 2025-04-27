@@ -47,6 +47,8 @@ const API = {
     },
     copyToClipboardAndNotify: (item: any) =>
       ipcRenderer.invoke('clipboard:copyToClipboardAndNotify', item),
+    pasteItemAtCursor: (item: any) =>
+      ipcRenderer.invoke('clipboard:pasteItemAtCursor', item),
   },
   shell: {
     openExternal: (url: string) => shell.openExternal(url),

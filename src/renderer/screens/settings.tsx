@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef } from 'react'
 import { ChevronLeft, Save, X } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
+import useNavigationStore from '../stores/navigationStore'
 
 const { api } = window
 
 export function Settings() {
-  const navigate = useNavigate()
+  const { goToMain } = useNavigationStore()
   const [shortcut, setShortcut] = useState<string>('')
   const [pendingShortcut, setPendingShortcut] = useState<string>('')
   const [isRecording, setIsRecording] = useState<boolean>(false)
@@ -98,10 +98,7 @@ export function Settings() {
   return (
     <div className="flex flex-col h-full p-4">
       <div className="flex items-center mb-6">
-        <button
-          onClick={() => navigate('/')}
-          className="p-1 rounded-md hover:bg-gray-800"
-        >
+        <button onClick={goToMain} className="p-1 rounded-md hover:bg-gray-800">
           <ChevronLeft size={24} />
         </button>
         <h1 className="text-xl font-semibold ml-2">Settings</h1>

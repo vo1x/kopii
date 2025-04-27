@@ -1,7 +1,7 @@
 import { Settings, Trash2 } from 'lucide-react'
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import useHistoryStore from 'renderer/stores/historyStore'
+import useNavigationStore from '../stores/navigationStore'
 
 const { api } = window
 
@@ -17,7 +17,7 @@ interface DialogOptions {
 
 export const StatusBar = () => {
   const { clearHistory, history } = useHistoryStore()
-  const navigate = useNavigate()
+  const { goToSettings } = useNavigationStore()
   const [isClearing, setIsClearing] = useState<boolean>(false)
 
   const handleEraseHistory = async () => {
@@ -62,7 +62,7 @@ export const StatusBar = () => {
         </button>
         <button
           className="text-gray-400 hover:text-teal-500"
-          onClick={() => navigate('/settings')}
+          onClick={goToSettings}
         >
           <Settings size={18} />
         </button>

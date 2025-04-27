@@ -1,12 +1,16 @@
-import { Outlet, useLocation } from 'react-router-dom'
+import type { ReactNode } from 'react'
 import { TitleBar } from './TitleBar'
-
 import { StatusBar } from './status-bar'
+import useNavigationStore from '../stores/navigationStore'
 
-export function Layout() {
-  const { pathname } = useLocation()
+interface LayoutProps {
+  children: ReactNode
+}
 
-  const isMainPage = pathname === '/' || pathname === '/index.html'
+export function Layout({ children }: LayoutProps) {
+  const { currentScreen } = useNavigationStore()
+
+  const isMainPage = currentScreen === 'main'
 
   return (
     <div className="flex flex-col h-screen">
@@ -15,10 +19,8 @@ export function Layout() {
         <TitleBar />
       </div>
 
-      {/* Outlet - scrollable content area */}
-      <div className="flex-1 overflow-auto">
-        <Outlet />
-      </div>
+      {/* Main content area */}
+      <div className="flex-1 overflow-auto">{children}</div>
 
       {/* StatusBar - fixed at bottom */}
       {isMainPage && (
