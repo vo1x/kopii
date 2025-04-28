@@ -10,9 +10,6 @@
   },
   "license": "MIT",
   "packageManager": "pnpm@10.0.0",
-  "pnpm": {
-    "onlyBuiltDependenciesFile": "./trusted-dependencies-scripts.json"
-  },
   "scripts": {
     "start": "electron-vite preview",
     "predev": "run-s clean:dev",
