@@ -11,6 +11,16 @@ declare global {
   }
 }
 
+ipcRenderer.on('clipboard:initMonitoring', () => {
+  console.log('Received clipboard:initMonitoring event from main process')
+  ipcRenderer.invoke('clipboard:startMonitoring')
+})
+
+ipcRenderer.on('clipboard:stopMonitoring', () => {
+  console.log('Received clipboard:stopMonitoring event from main process')
+  ipcRenderer.invoke('clipboard:stopMonitoring')
+})
+
 const API = {
   window: {
     minimize: () => ipcRenderer.send('window:minimize'),

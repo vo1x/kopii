@@ -16,8 +16,6 @@ export function MainScreen() {
   const [fuse, setFuse] = useState<Fuse<ClipboardHistoryItem> | null>(null)
 
   useEffect(() => {
-    api.clipboard.startMonitoring()
-
     const fetchHistory = async () => {
       const historyItems = await api.clipboard.getHistory()
       setHistory(historyItems)
@@ -33,7 +31,6 @@ export function MainScreen() {
     })
 
     return () => {
-      api.clipboard.stopMonitoring()
       if (unsubscribe) unsubscribe()
     }
   }, [setHistory, addItem])
